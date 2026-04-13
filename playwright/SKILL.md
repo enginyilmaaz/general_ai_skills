@@ -12,26 +12,22 @@ Playwright tests for end-to-end UI testing. Every test runs at **two resolutions
 
 ## Setup (if not installed)
 
-If the project doesn't have Playwright installed, set it up globally or locally:
+Check if Playwright is installed, install globally if not:
 
 ```bash
-# Option 1: Global install
-npm install -g @playwright/test
-npx playwright install chromium firefox
-
-# Option 2: Local (in project)
-npm init -y
-npm install -D @playwright/test
-npx playwright install chromium firefox
+npx playwright --version 2>/dev/null && echo "PLAYWRIGHT_OK" || { echo "PLAYWRIGHT_NOT_FOUND — installing globally..."; npm install -g @playwright/test && npx playwright install chromium firefox && echo "PLAYWRIGHT_INSTALLED"; }
 ```
 
 ## CRITICAL RULES
 
-1. **Minimum resolution is FHD (1920x1080).** Never create tests with viewport smaller than 1920x1080.
-2. **Every test runs at both FHD and 2K, on both Chrome and Firefox.** The `playwright.config.ts` defines four projects.
-3. **NEVER use Python.** All scripting must use `node -e`. No `python3`, no `.py` files.
-4. **ALL code, comments, test names in English.**
-5. **Always generate HTML report** after test runs and open it in browser.
+1. **Only do what you are told.** Even if you have full permissions, understand the exact scope of the request and do not go beyond it. Never do something that was not explicitly asked. Never delete anything unless told to delete. Never remove anything unless told to remove.
+2. **Review before acting.** Before making any changes, check and review first. Never modify, delete, or create files that were not specifically mentioned or approved by the user, even if you have permission to do so.
+3. **Answer directly when asked.** If the user asks whether you did, updated, or changed something, answer with a clear yes or no and the reason. For example: "No, I did not update X because Y." Do not dodge the question.
+4. **Minimum resolution is FHD (1920x1080).** Never create tests with viewport smaller than 1920x1080.
+5. **Every test runs at both FHD and 2K, on both Chrome and Firefox.** The `playwright.config.ts` defines four projects.
+6. **NEVER use Python.** All scripting must use `node -e`. No `python3`, no `.py` files.
+7. **ALL code, comments, test names in English.**
+8. **Always generate HTML report** after test runs and open it in browser.
 
 ---
 
