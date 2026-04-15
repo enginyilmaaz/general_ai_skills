@@ -28,6 +28,8 @@ npx playwright --version 2>/dev/null && echo "PLAYWRIGHT_OK" || { echo "PLAYWRIG
 6. **NEVER use Python.** All scripting must use `node -e`. No `python3`, no `.py` files.
 7. **ALL code, comments, test names in English.**
 8. **Always generate HTML report** after test runs and open it in browser.
+9. **Task-scoped commit/push.** When working on a task and the user says "commit" or "push", ONLY commit/push the changes related to that task. Unrelated changes MUST NOT be deleted, stashed, reverted, or included in the commit/push. They must remain in the working directory exactly as they were. Use explicit `git add <file>` for task-related files only — never `git add -A`, `git add .`, or `git stash`.
+10. **Stay within the working directory.** Never go outside the current working directory to make changes, even if you have full skip/permission privileges. Only operate outside the working directory if the user explicitly specifies a path (e.g., "check XX path and change this"). Default: all operations happen inside the current working directory.
 
 ---
 
