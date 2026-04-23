@@ -1,249 +1,223 @@
 ---
 name: playwright
-description: Use when writing, running, or debugging Playwright E2E tests. Covers multi-resolution testing (FHD + 2K), multi-browser (Chrome + Firefox), test structure, viewport config, credentials setup, HTML report generation. Triggers - 'playwright test yaz', 'e2e test', 'run playwright', 'test ekle', 'write test', 'UI test'
+description: Use when writing, running, or debugging Playwright E2E tests. Wraps the smartmarine/erp_playwright_setup repo (multi-env, FHD+2K, Chrome+Firefox). Triggers - 'e2e test', 'playwright test', 'run playwright', 'run with playwright'.
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
 # Playwright E2E Testing
 
-## Overview
-
-Playwright tests for end-to-end UI testing. Every test runs at **two resolutions** (FHD 1920x1080 and 2K 2560x1440) and **two browsers** (Chromium and Firefox) to catch layout and cross-browser issues. HTML reports are generated automatically after each run.
-
-## Setup (if not installed)
-
-Check if Playwright is installed, install globally if not:
-
-```bash
-npx playwright --version 2>/dev/null && echo "PLAYWRIGHT_OK" || { echo "PLAYWRIGHT_NOT_FOUND — installing globally..."; npm install -g @playwright/test && npx playwright install chromium firefox && echo "PLAYWRIGHT_INSTALLED"; }
-```
+This skill runs and maintains E2E tests via the shared setup repo
+[`smartmarine/erp_playwright_setup`](https://github.com/smartmarine/erp_playwright_setup).
+The repo owns configuration, credentials, and tests — this skill never re-creates
+that scaffolding, it only ensures the repo is present and then works inside it.
 
 ## CRITICAL RULES
 
 1. **Only do what you are told.** Even if you have full permissions, understand the exact scope of the request and do not go beyond it. Never do something that was not explicitly asked. Never delete anything unless told to delete. Never remove anything unless told to remove.
 2. **Review before acting.** Before making any changes, check and review first. Never modify, delete, or create files that were not specifically mentioned or approved by the user, even if you have permission to do so.
-3. **Answer directly when asked.** If the user asks whether you did, updated, or changed something, answer with a clear yes or no and the reason. For example: "No, I did not update X because Y." Do not dodge the question.
-4. **Minimum resolution is FHD (1920x1080).** Never create tests with viewport smaller than 1920x1080.
-5. **Every test runs at both FHD and 2K, on both Chrome and Firefox.** The `playwright.config.ts` defines four projects.
-6. **NEVER use Python.** All scripting must use `node -e`. No `python3`, no `.py` files.
+3. **Answer directly when asked.** If the user asks whether you did, updated, or changed something, answer with a clear yes or no and the reason.
+4. **Minimum resolution is FHD (1920x1080).** Never create tests with a smaller viewport.
+5. **Every test runs at FHD + 2K on Chromium + Firefox.** The four projects are already configured in the setup repo — do not remove or shrink them.
+6. **NEVER use Python.** All scripting must use `node -e` or shell commands.
 7. **ALL code, comments, test names in English.**
-8. **Always generate HTML report** after test runs and open it in browser.
-9. **Task-scoped commit/push.** When working on a task and the user says "commit" or "push", ONLY commit/push the changes related to that task. Unrelated changes MUST NOT be deleted, stashed, reverted, or included in the commit/push. They must remain in the working directory exactly as they were. Use explicit `git add <file>` for task-related files only — never `git add -A`, `git add .`, or `git stash`.
-10. **Stay within the working directory.** Never go outside the current working directory to make changes, even if you have full skip/permission privileges. Only operate outside the working directory if the user explicitly specifies a path (e.g., "check XX path and change this"). Default: all operations happen inside the current working directory.
+8. **Always generate the HTML report** and open it after a run.
+9. **Task-scoped commit/push.** When the user says "commit" or "push", only include files that belong to the current task. Never `git add -A`, `git add .`, or `git stash` unrelated changes.
+10. **Stay within the working directory.** Only operate outside the current working directory when the user specifies an absolute path (for example, when working inside the setup repo on an explicit request).
 
 ---
 
-## Project Structure
+## Setup repo location
 
-```
-<project-root>/
-  playwright.config.ts   # Config with FHD + 2K projects, Chrome + Firefox
-  test.env               # LOGIN_EMAIL, LOGIN_PASSWORD (optional)
-  tests/                 # All test spec files
-    *.spec.ts
-  test-results/          # Artifacts (screenshots, videos, traces)
-  playwright-report/     # HTML report
-```
+The setup repo lives at the same path on every machine:
 
-## playwright.config.ts Template
+| OS | Path |
+|---|---|
+| Linux / macOS | `$HOME/SMARINE/erp/erp_playwright_setup` |
+| Windows | `%USERPROFILE%\SMARINE\erp\erp_playwright_setup` |
 
-```typescript
-import { defineConfig, devices } from '@playwright/test';
-import dotenv from 'dotenv';
-import path from 'path';
+### Step 1 — ensure the repo is cloned
 
-dotenv.config({ path: path.resolve(__dirname, 'test.env') });
+Run before any test-related work. If the repo is missing, clone it into the
+canonical location; otherwise fast-forward pull.
 
-export default defineConfig({
-  testDir: './tests',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: [['html', { open: 'always' }], ['list']],
-  use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-  },
-  projects: [
-    {
-      name: 'Chrome-FHD-1920x1080',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1920, height: 1080 },
-      },
-    },
-    {
-      name: 'Chrome-2K-2560x1440',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 2560, height: 1440 },
-      },
-    },
-    {
-      name: 'Firefox-FHD-1920x1080',
-      use: {
-        ...devices['Desktop Firefox'],
-        viewport: { width: 1920, height: 1080 },
-      },
-    },
-    {
-      name: 'Firefox-2K-2560x1440',
-      use: {
-        ...devices['Desktop Firefox'],
-        viewport: { width: 2560, height: 1440 },
-      },
-    },
-  ],
-});
-```
-
-## Running Tests
+**Linux / macOS:**
 
 ```bash
-# All tests, all resolutions, all browsers
-npx playwright test
-
-# Specific test file
-npx playwright test tests/auth-login.spec.ts
-
-# Single resolution only
-npx playwright test --project="Chrome-FHD-1920x1080"
-
-# Single browser only (both resolutions)
-npx playwright test --project="Chrome-*"
-npx playwright test --project="Firefox-*"
-
-# Headed mode (visible browser)
-npx playwright test --headed
-
-# UI mode (interactive)
-npx playwright test --ui
-
-# With custom base URL
-BASE_URL=https://staging.example.com npx playwright test
-
-# Show last HTML report in browser
-npx playwright show-report
+SETUP_DIR="$HOME/SMARINE/erp/erp_playwright_setup"
+if [ ! -d "$SETUP_DIR/.git" ]; then
+  mkdir -p "$(dirname "$SETUP_DIR")"
+  git clone --depth 1 https://github.com/smartmarine/erp_playwright_setup.git "$SETUP_DIR"
+else
+  git -C "$SETUP_DIR" pull --ff-only
+fi
+echo "SETUP_REPO_READY=$SETUP_DIR"
 ```
 
-## HTML Report
+**Windows (PowerShell):**
 
-Reports are generated automatically after every run with `reporter: [['html', { open: 'always' }]]` in config.
-
-- Report is saved to `playwright-report/` directory
-- Opens automatically in default browser after test run
-- To manually open: `npx playwright show-report`
-- For CI, change `open: 'always'` to `open: 'never'` and archive the report as artifact
-
-## Credentials
-
-Tests can use `test.env` for login credentials (loaded via `dotenv`):
-```
-LOGIN_EMAIL=admin@example.com
-LOGIN_PASSWORD=password123
-BASE_URL=http://localhost:3000
+```powershell
+$SetupDir = Join-Path $env:USERPROFILE 'SMARINE\erp\erp_playwright_setup'
+if (-not (Test-Path (Join-Path $SetupDir '.git'))) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $SetupDir) | Out-Null
+  git clone --depth 1 https://github.com/smartmarine/erp_playwright_setup.git $SetupDir
+} else {
+  git -C $SetupDir pull --ff-only
+}
+Write-Host "SETUP_REPO_READY=$SetupDir"
 ```
 
-## Writing Tests
+All subsequent commands run with `cwd = <setup repo path>`.
 
-### Test File Template
+### Step 2 — ensure dependencies and browsers are installed
+
+```bash
+cd "$HOME/SMARINE/erp/erp_playwright_setup"
+[ -d node_modules ] || yarn install
+npx playwright --version >/dev/null 2>&1 || yarn install:browsers
+```
+
+---
+
+## Environments
+
+| TARGET_ENV | URL | Writable? |
+|---|---|---|
+| `dev-local` | `http://localhost:3000` | yes |
+| `dev-remote` | `https://erp.serviceportal.biz` | yes |
+| `prod-erp` | `https://erp.avatecmarine.com` | read-only unless `ALLOW_PROD_WRITES=1` |
+| `prod-sealink` | `https://erp.sealink.co` | read-only unless `ALLOW_PROD_WRITES=1` |
+
+**Default env:** `dev-local`. Use it unless the user explicitly says "on
+dev-remote", "prod-erp env ile yap", etc.
+
+**Roles:** `systest` (system admin, full access) and `readtest` (view-only).
+Default role: `systest`.
+
+Credentials are stored in the setup repo's `test.env`.
+
+---
+
+## Running tests
+
+```bash
+cd "$HOME/SMARINE/erp/erp_playwright_setup"
+
+# Default (reads TARGET_ENV from test.env — usually dev-local)
+yarn test
+
+# Override on the fly
+yarn test:dev-local
+yarn test:dev-remote
+yarn test:prod-erp
+yarn test:prod-sealink
+
+# Pick role
+yarn test:systest
+yarn test:readtest
+
+# Combine env + role
+cross-env TARGET_ENV=dev-remote ROLE=readtest yarn test
+
+# Single project
+yarn test --project="Chrome-FHD-1920x1080"
+
+# Headed / UI mode
+yarn test:headed
+yarn test:ui
+```
+
+After a run, open the last HTML report:
+
+```bash
+cd "$HOME/SMARINE/erp/erp_playwright_setup" && yarn report
+```
+
+---
+
+## When the user says "test", "verify", "reproduce", "replicate"
+
+Run the existing suite against **dev-local** by default and investigate any
+failures. Do NOT invent tests unless the user explicitly asks for new coverage.
+
+```bash
+cd "$HOME/SMARINE/erp/erp_playwright_setup" && yarn test:dev-local
+```
+
+If the user names an environment ("test et remote", "prod-erp env ile çalıştır",
+etc.), switch `TARGET_ENV` accordingly.
+
+---
+
+## Writing a new test
+
+Add a `*.spec.ts` file under `tests/` in the setup repo:
 
 ```typescript
 import { test, expect } from '@playwright/test';
+import { getActiveEnv, getActiveRole, getCredentials } from '../lib/credentials';
 
-const { LOGIN_EMAIL, LOGIN_PASSWORD } = process.env;
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const env = getActiveEnv();
+const role = getActiveRole();
+const { email, password } = getCredentials(env, role);
 
-test.describe('Feature description', () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!LOGIN_EMAIL || !LOGIN_PASSWORD, 'LOGIN_EMAIL or LOGIN_PASSWORD env variables not set');
+test.describe(`Feature X (${env}, role=${role})`, () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('/some/path');
+    });
 
-    // Login
-    await page.goto(`${BASE_URL}/login`);
-    await page.getByLabel('Email').fill(LOGIN_EMAIL!);
-    await page.getByLabel('Password').fill(LOGIN_PASSWORD!);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.waitForURL(url => !url.toString().includes('/login'), { timeout: 20000 });
-  });
+    test('does the thing', async ({ page }) => {
+        await expect(page.getByRole('heading', { name: 'Expected' })).toBeVisible();
+    });
 
-  test('should do something specific', async ({ page }) => {
-    await page.goto(`${BASE_URL}/target-page`);
-    await page.waitForLoadState('domcontentloaded');
-
-    // Test assertions
-    await expect(page.getByRole('heading', { name: 'Expected Title' })).toBeVisible();
-  });
+    test('authenticated action', async ({ page }) => {
+        test.skip(!email || !password, `No creds for env=${env} role=${role}`);
+        await page.getByLabel('Username').fill(email);
+        await page.getByLabel('Password').fill(password);
+        await page.getByRole('button', { name: 'Sign in' }).click();
+        await page.waitForURL(url => !url.toString().includes('/auth/login'));
+    });
 });
 ```
 
-### Key Patterns
+Rules when adding tests:
+- Use `page.goto('/path')` — the host comes from `baseURL`. Never hardcode hosts.
+- Resolve credentials with the helper and `test.skip` when they are missing.
+- Keep everything English: describe blocks, test names, comments.
 
-| Pattern | Code |
+---
+
+## Common patterns
+
+| Need | Code |
 |---|---|
-| Navigate | `await page.goto(\`\${BASE_URL}/path\`)` |
-| Wait for load | `await page.waitForLoadState('domcontentloaded')` |
-| Click button | `await page.getByRole('button', { name: 'Submit' }).click()` |
-| Fill input | `await page.getByLabel('Email').fill('value')` |
-| Assert visible | `await expect(locator).toBeVisible()` |
-| Assert not visible | `await expect(locator).not.toBeVisible()` |
-| Wait for URL | `await page.waitForURL(url => url.includes('/path'), { timeout: 20000 })` |
-| Wait for API | `await page.waitForResponse(r => r.url().includes('/api/endpoint'))` |
-| Skip if no creds | `test.skip(!LOGIN_EMAIL, 'env not set')` |
+| Wait for navigation | `await page.waitForURL(url => !url.toString().includes('/auth/login'), { timeout: 20000 })` |
+| Wait for API | `await page.waitForResponse(r => r.url().includes('/api/x') && r.status() === 200)` |
+| Resolution branching | `const v = page.viewportSize(); if (v && v.width >= 2560) { ... }` |
+| Browser branching | `test('x', async ({ page, browserName }) => { ... })` |
 
-### Resolution-Aware Tests
+---
 
-Tests automatically run at both FHD and 2K. If you need resolution-specific behavior:
+## Reviewing failures
 
-```typescript
-test('layout adapts to viewport', async ({ page }) => {
-  const viewport = page.viewportSize();
+- HTML report opens automatically; the `playwright-report/` folder also stays on disk.
+- Screenshots, videos, and traces are kept **only on failure** under `test-results/`.
+- Open a trace with `npx playwright show-trace test-results/<path>/trace.zip`.
 
-  if (viewport && viewport.width >= 2560) {
-    // 2K-specific assertions
-    await expect(page.locator('.sidebar-expanded')).toBeVisible();
-  } else {
-    // FHD assertions
-    await expect(page.locator('.sidebar')).toBeVisible();
-  }
-});
-```
+## Cleaning up artifacts
 
-### Browser-Aware Tests
-
-If you need browser-specific behavior:
-
-```typescript
-test('feature works across browsers', async ({ page, browserName }) => {
-  if (browserName === 'firefox') {
-    // Firefox-specific handling
-  }
-});
-```
-
-## Artifacts on Failure
-
-- **Screenshots:** Captured on failure, saved to `test-results/`
-- **Videos:** Retained on failure
-- **Traces:** Retained on failure -- open with `npx playwright show-trace test-results/path/trace.zip`
-
-## Post-Test Cleanup
-
-After reviewing test results, clean up generated artifacts:
+After the user has reviewed a run:
 
 ```bash
+cd "$HOME/SMARINE/erp/erp_playwright_setup"
 rm -rf test-results/ playwright-report/
 ```
 
-## Common Mistakes
+## Common mistakes
 
 | Mistake | Fix |
 |---|---|
-| Using viewport < 1920x1080 | Minimum is FHD. Never set smaller viewport. |
-| Hardcoded wait times | Prefer `waitForLoadState`, `waitForURL`, `waitForResponse` over `waitForTimeout` |
-| Missing login in beforeEach | Always add login flow in `beforeEach` for authenticated pages |
-| Not skipping when no creds | Always `test.skip(!LOGIN_EMAIL...)` to avoid false failures |
-| Testing only one resolution | All 4 projects (2 browsers x 2 resolutions) run by default. |
-| Not checking HTML report | Always review the HTML report after failures |
+| Hardcoding the host in `page.goto` | Use `page.goto('/path')`; `baseURL` handles the host. |
+| Re-creating `playwright.config.ts` locally | The setup repo owns the config. Update it there if a change is needed. |
+| Setting viewport below 1920x1080 | FHD is the minimum. |
+| Using `waitForTimeout` | Prefer `waitForURL`, `waitForResponse`, `waitForLoadState`. |
+| Running prod writes without `ALLOW_PROD_WRITES=1` | Explicitly opt in per run, or run against a dev env. |
